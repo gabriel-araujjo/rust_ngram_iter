@@ -1,11 +1,7 @@
-pub enum State<T> {
-    Start,
-    Middle(T),
-    End,
-}
+use ringbuffer::ConstGenericRingBuffer;
 
-impl<T> From<T> for State<T> {
-    fn from(it: T) -> Self {
-        Self::Middle(it)
-    }
+pub enum State<T, const N: usize> {
+    Start,
+    Middle(ConstGenericRingBuffer<T, N>),
+    End,
 }

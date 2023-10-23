@@ -3,6 +3,8 @@ mod bigram_test;
 #[cfg(test)]
 mod trigram_test;
 
+use ringbuffer::{RingBuffer, ConstGenericRingBuffer};
+
 use crate::{state::State, Iterable};
 use std::mem::{MaybeUninit, transmute_copy};
 
@@ -21,7 +23,7 @@ use std::mem::{MaybeUninit, transmute_copy};
 /// assert_eq!(trigrams.next(), Some([char::bumper_item(), 'a', 'b']));
 /// let mut ten_grams: ngram_iter::Iter<_, _, 10> = letters.chars().into();
 /// assert_eq!(ten_grams.next(), Some([char::bumper_item(), 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i']));
-/// assert_eq!(ten_grams.next(), Some(['i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r']));
+/// assert_eq!(ten_grams.next(), Some(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']));
 ///
 /// // N < 2 is panics at runtime!
 /// let mut one_gram: ngram_iter::Iter<_, _, 1> = letters.chars().into();
@@ -33,7 +35,7 @@ where
     I: Iterator<Item = T>,
 {
     it: I,
-    state: State<T>,
+    state: State<T, N>,
 }
 
 impl<T, I, const N: usize> Iterator for Iter<T, I, N>
@@ -55,9 +57,10 @@ where
         };
         match self.state {
             State::Start => {
+                let mut rb = ConstGenericRingBuffer::new();
                 if let Some(item) = self.it.next() {
                     // dependent iterator has a least one item
-                    self.state = item.into();
+                    rb.push(item);
                     out[0] = MaybeUninit::new(T::bumper_item());
                     out[1] = MaybeUninit::new(item);
                 } else {
@@ -68,34 +71,38 @@ where
                 // Fill in the remaining values if N is greater than 2.
                 for i in 2..N {
                     if let Some(item) = self.it.next() {
-                        self.state = item.into();
+                        rb.push(item);
                         out[i] = MaybeUninit::new(item);
                     } else {
-                        self.state = State::End;
                         // Fill in N-i values with the bumper/buffer item.
                         for j in i..N {
                             out[j] = MaybeUninit::new(T::bumper_item());
                         }
                     }
                 }
+                self.state = State::Middle(rb);
             }
-            State::Middle(item) => {
+            State::Middle(ref mut rb) => {
                 // first value was stored in the state.
-                out[0] = MaybeUninit::new(item);
-                for i in 1..N {
-                    if let Some(item) = self.it.next() {
-                        // store current value in state for overlap.
-                        self.state = State::Middle(item);
-                        out[i] = MaybeUninit::new(item);
-                    } else {
-                        // End of iterator has been reached. Note the state...
-                        self.state = State::End;
-                        // ...and fill in the remaining values of this NGram
-                        // with the bumper value.
-                        for j in i..N {
-                            out[j] = MaybeUninit::new(T::bumper_item());
-                        }
-                    }
+                let mut i = 0;
+                out[i] = MaybeUninit::new(rb.dequeue().unwrap());
+                i += 1;
+
+                for c in rb.iter() {
+                    out[i] = MaybeUninit::new(*c);
+                    i += 1;
+                }
+
+                if let Some(item) = self.it.next() {
+                    rb.push(item);
+                    out[i] = MaybeUninit::new(item);
+                    i += 1;
+                }
+                for j in i..N {
+                    out[j] = MaybeUninit::new(T::bumper_item());
+                }
+                if rb.is_empty() {
+                    self.state = State::End;
                 }
             }
             State::End => return None,

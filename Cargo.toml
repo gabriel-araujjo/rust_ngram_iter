@@ -9,3 +9,5 @@ description = "An iterator of arbitrary N-grams of rust Copy types"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ringbuffer = "0.15.0"
+

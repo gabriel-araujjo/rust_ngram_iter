@@ -10,6 +10,7 @@ fn empty_iter() {
 fn one_item() {
     let mut subj: Iter<char, _, 3> = "1".chars().into();
     assert_eq!(subj.next(), Some([WORD_JOINER, '1', WORD_JOINER]));
+    assert_eq!(subj.next(), Some(['1', WORD_JOINER, WORD_JOINER]));
     assert!(subj.next().is_none());
 }
 
@@ -18,6 +19,7 @@ fn two_items() {
     let mut subj: Iter<char, _, 3> = "12".chars().into();
     assert_eq!(subj.next(), Some([WORD_JOINER, '1', '2']));
     // Should this 👇 be None instead?
+    assert_eq!(subj.next(), Some(['1', '2', WORD_JOINER]));
     assert_eq!(subj.next(), Some(['2', WORD_JOINER, WORD_JOINER]));
     assert!(subj.next().is_none());
 }
@@ -26,7 +28,9 @@ fn two_items() {
 fn three_items() {
     let mut subj: Iter<char, _, 3> = "123".chars().into();
     assert_eq!(subj.next(), Some([WORD_JOINER, '1', '2']));
+    assert_eq!(subj.next(), Some(['1', '2', '3']));
     assert_eq!(subj.next(), Some(['2', '3', WORD_JOINER]));
+    assert_eq!(subj.next(), Some(['3', WORD_JOINER, WORD_JOINER]));
     assert!(subj.next().is_none());
 }
 
@@ -34,7 +38,9 @@ fn three_items() {
 fn four_items() {
     let mut subj: Iter<char, _, 3> = "1234".chars().into();
     assert_eq!(subj.next(), Some([WORD_JOINER, '1', '2']));
+    assert_eq!(subj.next(), Some(['1', '2', '3']));
     assert_eq!(subj.next(), Some(['2', '3', '4']));
+    assert_eq!(subj.next(), Some(['3', '4', WORD_JOINER]));
     assert_eq!(subj.next(), Some(['4', WORD_JOINER, WORD_JOINER]));
     assert!(subj.next().is_none());
 }
@@ -43,7 +49,10 @@ fn four_items() {
 fn five_items() {
     let mut subj: Iter<char, _, 3> = "12345".chars().into();
     assert_eq!(subj.next(), Some([WORD_JOINER, '1', '2']));
+    assert_eq!(subj.next(), Some(['1', '2', '3']));
     assert_eq!(subj.next(), Some(['2', '3', '4']));
+    assert_eq!(subj.next(), Some(['3', '4', '5']));
     assert_eq!(subj.next(), Some(['4', '5', WORD_JOINER]));
+    assert_eq!(subj.next(), Some(['5', WORD_JOINER, WORD_JOINER]));
     assert!(subj.next().is_none());
 }
